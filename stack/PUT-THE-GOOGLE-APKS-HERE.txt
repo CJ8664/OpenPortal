@@ -1,0 +1,12 @@
+﻿Put the Google stack APKs in this folder (see ..\Readme.md).
+
+The script looks for them in this order: the -PlayDir argument (if given), then this
+"stack" folder, then %USERPROFILE%\Downloads\play. It uses the first folder that actually
+contains Google Play Services. Any -GmsApk / -GsfApk / -GsfLoginApk / -VendingBundle
+argument overrides the folder for that one file.
+
+Needed (from APKMirror):
+  Google Play Services 26.44.32 (100400)              - APK (not Bundle); arm64-v8a + armeabi-v7a, Android 9.0+, nodpi
+  Google Services Framework 9                          - APK; nodpi
+  Google Account Manager 7.1.2                         - APK; nodpi
+  Google Play Store 53.3.22 (24, 3arch, Android 7.0+)  - BUNDLE (.apkm); nodpi

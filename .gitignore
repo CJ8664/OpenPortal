@@ -1,0 +1,21 @@
+# Compiled output
+*.class
+*.o
+*.so
+
+# Android build artifacts
+*.apk
+*.dex
+*.idsig
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
