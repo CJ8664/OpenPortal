@@ -37,3 +37,7 @@ __pycache__/
 test-results/*
 .remember
 AGENTS.md
+
+# Pre-built outputs needed to run without -Rebuild
+!exploit/build/preload-portal-aloha-1041515800015050.so
+!exploit-sentinel/build/portal-exploit-sentinel.apk
