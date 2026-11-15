@@ -15,6 +15,9 @@ I've tested the script myself, but like any script that uses exploits, there's a
 small risk of a boot loop or other unrecoverable error happening.  You agree by using the
 script that you have read and understand this warning.
 
+## Device fingerprint
+Facebook/aloha_prod/aloha:9/PKQ1.191202.001/1041515800015050:user/prod-keys
+
 ## How to Run
 
 ### Prerequisites
