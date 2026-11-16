@@ -7382,6 +7382,7 @@ class PortalProvisioner:
         if use_exploit_sentinel:
             self.prepare_exploit_sentinel()
         sentinel_removed = not use_exploit_sentinel
+        defer_post_grants_cleanup = False
         try:
             self.prepare_exploit_users()
             self.stage()
@@ -7466,11 +7467,28 @@ class PortalProvisioner:
                     flush=True,
                 )
                 exploit_ok = self.exploit(base, memstart, attempt)
-                post_attempt_boot = self.connect_after_reboot(boot_id)
+                # PORTAL_GRANTS_NO_REBOOT opt-in: a successful
+                # permission-grants session edits /data/system/packages.xml
+                # behind the running PMS's back. The usual graceful reboot
+                # lets PMS flush its pre-edit in-memory state over the edit,
+                # and the post-session sentinel uninstall would do the same,
+                # so with the opt-in set, skip the reboot and defer all
+                # PMS-mutating cleanup; the operator hard power-cycles the
+                # device instead, and a later normal run performs cleanup.
+                grants_no_reboot = (
+                    exploit_ok
+                    and self.permission_grants
+                    and bool(os.environ.get("PORTAL_GRANTS_NO_REBOOT"))
+                )
+                if grants_no_reboot:
+                    defer_post_grants_cleanup = True
+                    post_attempt_boot = boot_id
+                else:
+                    post_attempt_boot = self.connect_after_reboot(boot_id)
                 if not exploit_ok:
                     clean_boot_id = post_attempt_boot
                     continue
-                if use_exploit_sentinel:
+                if use_exploit_sentinel and not grants_no_reboot:
                     self.uninstall_exploit_sentinel()
                     sentinel_removed = True
                 if self.shizuku:
@@ -7515,6 +7533,18 @@ class PortalProvisioner:
                     # no-op dry-run self-test (Step 4.5.1), confirmed manually
                     # via logcat before the first real edit.
                     self.write_state("complete")
+                    if grants_no_reboot:
+                        print(
+                            "PERMISSION_GRANTS_NO_REBOOT "
+                            f"boot_id={post_attempt_boot} "
+                            "note=packages.xml edited in-session; reboot "
+                            "skipped and cleanup deferred so PMS cannot "
+                            "overwrite the edit. Hard power-cycle the Portal "
+                            "now (unplug, wait 10s, plug back in), then "
+                            "check the framework past signatures.",
+                            flush=True,
+                        )
+                        return
                     print(
                         "PERMISSION_GRANTS_INSTALLED "
                         f"boot_id={post_attempt_boot} next=dry-run-boot "
@@ -7525,11 +7555,18 @@ class PortalProvisioner:
                 self.verify_across_two_reboots(first_boot=post_attempt_boot)
                 return
         finally:
-            if self.exploit_users_created:
+            if self.exploit_users_created and not defer_post_grants_cleanup:
                 self.cleanup_exploit_users(best_effort=True)
-            if use_exploit_sentinel and not sentinel_removed:
+            if (
+                use_exploit_sentinel
+                and not sentinel_removed
+                and not defer_post_grants_cleanup
+            ):
                 self.uninstall_exploit_sentinel(best_effort=True)
-            if self.uid1000_runtime_package_installed:
+            if (
+                self.uid1000_runtime_package_installed
+                and not defer_post_grants_cleanup
+            ):
                 self.uninstall_uid1000_runtime_payload(best_effort=True)
         raise ProvisionError(f"provisioning failed after {self.attempts} attempts")
 
