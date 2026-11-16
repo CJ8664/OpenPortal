@@ -3,8 +3,15 @@
 # OpenPortal.sh - bash port of OpenPortal.ps1 (CoderPlusPlus/OpenPortal)
 #
 # SYNOPSIS
-#   Provision the Meta Portal+ (aloha) to run the latest Google Services with
-#   the privileges it needs, using the root exploit.
+#   Provision a Meta Portal (aloha) or Portal TV (ripley) to run the latest
+#   Google Services with the privileges it needs, using the root exploit.
+#
+#   Supported devices/builds (the provisioner supports exactly these two
+#   for this script):
+#     aloha   Meta Portal / Portal+ (1st generation), build 1041515800015050
+#     ripley  Meta Portal TV, build 2041515800015050
+#   Phase 1 picks the matching prebuilt exploit for the connected device;
+#   any other device or build stops with an unsupported-build message.
 #
 # DESCRIPTION
 #   Faithful 1:1 port of OpenPortal.ps1 for macOS and Linux, with ONE
@@ -559,14 +566,45 @@ invoke_phase1() {
         return 0
     fi
 
+    # The exploit binary is exact-build: pick the one matching the
+    # connected device. The provisioner selects (and refuses) by the same
+    # device+fingerprint pair; doing it here gives a clear message and
+    # lets the --skip-build pre-check below test the right file.
+    device="$(invoke_adb shell getprop ro.product.device)"
+    fingerprint="$(invoke_adb shell getprop ro.build.fingerprint)"
+    case "$device|$fingerprint" in
+        "aloha|Facebook/aloha_prod/aloha:9/PKQ1.191202.001/1041515800015050:user/prod-keys")
+            preload_name="preload-portal-aloha-1041515800015050.so"
+            make_target="portal-aloha-1041515800015050" ;;
+        "ripley|Facebook/ripley_prod/ripley:9/PKQ1.191202.001/2041515800015050:user/prod-keys")
+            preload_name="preload-portal-ripley-2041515800015050.so"
+            make_target="portal-ripley-2041515800015050" ;;
+        *)
+            die "Unsupported device/build: device=$device fingerprint=$fingerprint. Supported: aloha build 1041515800015050 (Portal / Portal+ 1st generation) and ripley build 2041515800015050 (Portal TV)." ;;
+    esac
+    printf 'Preload:       %s\n' "$preload_name"
+
     # The provisioner builds these itself unless it is passed --skip-build,
     # so only require them up front for a --skip-build run.
     if [ $REBUILD -eq 0 ]; then
-        so="$TOOL_ROOT/exploit/build/preload-portal-aloha-1041515800015050.so"
+        so="$TOOL_ROOT/exploit/build/$preload_name"
         sentinel="$TOOL_ROOT/exploit-sentinel/build/portal-exploit-sentinel.apk"
-        for f in "$so" "$sentinel"; do
+        if [ ! -f "$so" ]; then
+            die "Missing build output: $so (build it with: (cd \"$TOOL_ROOT/exploit\" && make $make_target) with the Android NDK installed, or run with --rebuild so the provisioner builds it)"
+        fi
+        if [ ! -f "$sentinel" ]; then
+            die "Missing build output: $sentinel (run with --rebuild so the provisioner builds it, or build it first)"
+        fi
+        # The UID-1000 payload the provisioner validates before the
+        # exploit runs. Both supported targets use these same
+        # (aloha-named) artifacts, from the uid1000-helper "aloha"
+        # make target.
+        for f in \
+            "$TOOL_ROOT/uid1000-helper/build/portal-camera-led-watch-aloha" \
+            "$TOOL_ROOT/uid1000-helper/build/portal-uid1000-hook-aloha.bin" \
+            "$TOOL_ROOT/uid1000-helper/build/portal-uid1000-runtime.apk"; do
             if [ ! -f "$f" ]; then
-                die "Missing build output: $f (run with --rebuild so the provisioner builds it, or build it first)"
+                die "Missing build output: $f (build the helper artifacts with: (cd \"$TOOL_ROOT/uid1000-helper\" && make aloha) with the Android SDK, NDK and a JDK installed, or run with --rebuild so the provisioner builds them)"
             fi
         done
     fi
@@ -903,7 +941,7 @@ if ! confirm_risk_warning; then
     exit 0
 fi
 
-printf '%s\n' "${C_WHITE}Meta Portal+ provisioning - phases: $selected_text${C_OFF}"
+printf '%s\n' "${C_WHITE}Meta Portal provisioning - phases: $selected_text${C_OFF}"
 
 ran_list=""
 bootstrap_deps

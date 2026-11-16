@@ -18,13 +18,17 @@ script that you have read and understand this warning.
 ## Device fingerprint
 Facebook/aloha_prod/aloha:9/PKQ1.191202.001/1041515800015050:user/prod-keys
 
+This fork's `OpenPortal.sh` (macOS/Linux) also supports the Meta Portal TV:
+Facebook/ripley_prod/ripley:9/PKQ1.191202.001/2041515800015050:user/prod-keys
+
 ## How to Run
 
 ### Prerequisites
 
 Before you start, gather these:
 
-1. **A Windows PC** and a **USB cable that carries data** (not a charge-only cable).
+1. **A Windows PC** (for `OpenPortal.ps1`) **or a Mac/Linux machine** (for this fork's
+   `OpenPortal.sh`), and a **USB cable that carries data** (not a charge-only cable).
 
 2. **A first-generation Meta Portal (codenamed "aloha").** That's the **15.6-inch Portal+** or
    the **10-inch Portal** — the 2018 models, which share the same firmware. OpenPortal is
@@ -32,6 +36,10 @@ Before you start, gather these:
    Portal Go, Portal Mini, Portal TV, and the second-generation Portals — but OpenPortal's
    script is written for the first-generation "aloha" models, so those others aren't
    supported here, though they could probably be made to work fairly easily.)
+   
+   **This fork adds Portal TV support to `OpenPortal.sh`:** a Meta Portal TV (codenamed
+   "ripley") on build 2041515800015050 works with Phases 1-4. The bash port has no
+   Phase 5 (Messenger), which the TV does not need.
 
 3. **Wi-Fi on the Portal.** Connect the Portal to a Wi-Fi network before you start. The
    script uses a small wireless helper channel to recover the Portal if it restarts
@@ -70,7 +78,8 @@ Google files are the only things you have to gather by hand.
 2. On the Portal, open **Settings → Debug** and tap on **ADB Enabled**.  
 3. Watch the Portal's screen — a **"Allow USB debugging?"** prompt will appear. Tap
    **Allow** (tick "always allow" if offered).
-4. On your PC, open this folder and **double-click `OpenPortal.cmd`**.
+4. On your PC, open this folder and **double-click `OpenPortal.cmd`**. On Mac/Linux,
+   run `./OpenPortal.sh` from this folder instead.
 5. For the most part, the script just does its thing.  Towards the end it will ask you if you 
    want to install Facebook Messenger.  This is because an app on the Portal uses the same-named
    permission as Messenger does and that breaks installing Messenger.  So we add Messenger's cert
