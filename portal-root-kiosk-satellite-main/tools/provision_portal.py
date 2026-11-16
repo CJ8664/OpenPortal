@@ -656,15 +656,25 @@ class PortalProvisioner:
     ) -> subprocess.CompletedProcess[str]:
         return self.run(self.adb + args, timeout=timeout, check=check)
 
+    def network_serial(self) -> bool:
+        # TCP serials are host:port; USB serials never contain a colon.
+        # adb disconnect/connect only apply to network transports: pointed
+        # at a USB serial, disconnect kicks the device off the adb server
+        # and connect cannot bring it back, so USB runs must skip both and
+        # simply poll get-state until the device (re)appears.
+        return ":" in self.serial
+
     def connect(self, wait_seconds: int = 150) -> None:
-        try:
-            self.run(["adb", "disconnect", self.serial], timeout=5)
-        except ProvisionError:
-            pass
+        if self.network_serial():
+            try:
+                self.run(["adb", "disconnect", self.serial], timeout=5)
+            except ProvisionError:
+                pass
         deadline = time.monotonic() + wait_seconds
         while time.monotonic() < deadline:
             try:
-                self.run(["adb", "connect", self.serial], timeout=5)
+                if self.network_serial():
+                    self.run(["adb", "connect", self.serial], timeout=5)
                 state = self.adb_run(["get-state"], timeout=5)
                 completed = self.adb_run(
                     ["shell", "getprop", "sys.boot_completed"], timeout=5
@@ -691,15 +701,17 @@ class PortalProvisioner:
         return before, after
 
     def connect_after_reboot(self, before: str, wait_seconds: int = 600) -> str:
-        try:
-            self.run(["adb", "disconnect", self.serial], timeout=5)
-        except ProvisionError:
-            pass
+        if self.network_serial():
+            try:
+                self.run(["adb", "disconnect", self.serial], timeout=5)
+            except ProvisionError:
+                pass
         deadline = time.monotonic() + wait_seconds
         last_boot_id = ""
         while time.monotonic() < deadline:
             try:
-                self.run(["adb", "connect", self.serial], timeout=5)
+                if self.network_serial():
+                    self.run(["adb", "connect", self.serial], timeout=5)
                 state = self.adb_run(["get-state"], timeout=5)
                 completed = self.adb_run(
                     ["shell", "getprop", "sys.boot_completed"], timeout=5
@@ -725,7 +737,8 @@ class PortalProvisioner:
                     )
                     if settle_seconds:
                         time.sleep(settle_seconds)
-                        self.run(["adb", "connect", self.serial], timeout=5)
+                        if self.network_serial():
+                            self.run(["adb", "connect", self.serial], timeout=5)
                         stable = self.adb_run(
                             ["shell", "getprop", "sys.boot_completed"],
                             timeout=5,
